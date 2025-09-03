@@ -51,23 +51,38 @@ docker run -p 8080:8080 \
 
 ## Railway Deployment
 
-Railway automatically passes environment variables as build arguments during the Docker build process. 
+### Important: Railway Template Variable Resolution
+
+Railway's template variables like `${{service.RAILWAY_PRIVATE_DOMAIN}}` need to be resolved at deployment time, not build time. Make sure your environment variables are properly configured.
 
 ### Required Environment Variables in Railway:
 
-Set these variables in Railway's dashboard:
+**Correct format for Railway:**
+```
+WEB_ENDPOINT=${{plane-frontend.RAILWAY_PRIVATE_DOMAIN}}
+ADMIN_ENDPOINT=${{plane-space.RAILWAY_PRIVATE_DOMAIN}}
+API_ENDPOINT=${{plane-backend.RAILWAY_PRIVATE_DOMAIN}}
+SPACES_ENDPOINT=${{plane-space.RAILWAY_PRIVATE_DOMAIN}}
+BUCKET_NAME=${{shared.S3_BUCKET}}
+BUCKET_ENDPOINT=${{shared.S3_ENDPOINT}}
+```
 
-- `PORT` - Port to listen on (automatically set by Railway, defaults to 8080)
-- `WEB_ENDPOINT` - Main web application endpoint
-- `ADMIN_ENDPOINT` - Admin/god-mode endpoint  
-- `API_ENDPOINT` - API endpoint (used for both /api/* and /auth/*)
-- `SPACES_ENDPOINT` - Spaces endpoint
-- `BUCKET_NAME` - Name of the bucket for storage endpoint
-- `BUCKET_ENDPOINT` - Storage bucket endpoint
+**Note:** Remove the extra quotes and make sure the service names match exactly your Railway services.
+
+### Troubleshooting:
+
+1. **Invalid URL prefix error**: This means Railway template variables aren't resolving properly
+2. **Check service names**: Ensure service names in templates match your actual Railway service names
+3. **Check shared variables**: Make sure shared variables like `S3_BUCKET` and `S3_ENDPOINT` are properly defined in Railway
+
+### Railway Service Names:
+Make sure these match your actual Railway service names:
+- `plane-frontend` 
+- `plane-space`
+- `plane-backend` (or `plane-backend/api` if using subdirectory)
+- `shared` (for shared variables)
 
 Railway will automatically:
-1. Pass these environment variables as build arguments to Docker
-2. Build the image with the configuration baked in
-3. Deploy the container
-
-No additional configuration needed - just set the environment variables in Railway's dashboard and deploy from this repository.
+1. Resolve template variables at deployment time
+2. Pass resolved values as environment variables
+3. Build and deploy the container
