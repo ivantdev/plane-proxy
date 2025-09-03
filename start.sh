@@ -62,7 +62,7 @@ if ! echo "$BUCKET_ENDPOINT" | grep -q '^https\?://'; then
 fi
 
 # Test connectivity to API endpoint
-echo "=== Testing API connectivity ==="
+echo "=== Testing API connectivity (IPv6 optimized) ==="
 # Extract host and port from API_ENDPOINT (format: http://domain:port)
 API_URL_CLEAN=$(echo "$API_ENDPOINT" | sed 's|http[s]*://||')
 API_HOST=$(echo "$API_URL_CLEAN" | cut -d':' -f1)
@@ -74,13 +74,27 @@ if [ "$API_PORT" = "$API_HOST" ]; then
 fi
 
 echo "Testing connection to $API_HOST:$API_PORT (Railway private network)"
-if nc -z -w5 "$API_HOST" "$API_PORT" 2>/dev/null; then
-    echo "✓ Successfully connected to API endpoint"
+
+# Check if we can resolve the hostname to IPv6
+echo "Checking DNS resolution..."
+if getent ahosts "$API_HOST" 2>/dev/null | head -5; then
+    echo "✓ DNS resolution successful"
+else
+    echo "⚠ DNS resolution issues"
+fi
+
+# Test IPv6 connectivity specifically
+echo "Testing IPv6 connectivity..."
+if nc -6 -z -w10 "$API_HOST" "$API_PORT" 2>/dev/null; then
+    echo "✓ Successfully connected to API endpoint via IPv6"
+elif nc -z -w10 "$API_HOST" "$API_PORT" 2>/dev/null; then
+    echo "✓ Successfully connected to API endpoint (fallback)"
 else
     echo "⚠ Cannot connect to API endpoint $API_HOST:$API_PORT"
     echo "  This might be normal if the API service is still starting up"
+    echo "  Railway services often take 30-60 seconds to be fully ready"
 fi
-echo "==============================="
+echo "=============================================="
 
 # Substitute environment variables in nginx config
 envsubst '${PORT} ${WEB_ENDPOINT} ${ADMIN_ENDPOINT} ${API_ENDPOINT} ${SPACES_ENDPOINT} ${BUCKET_NAME} ${BUCKET_ENDPOINT}' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf
